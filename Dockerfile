@@ -1,22 +1,20 @@
 FROM php:8.2-apache
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
-
-# Install system dependencies + PHP extensions
+# Install dependency
 RUN apt-get update && apt-get install -y \
     libicu-dev \
-    libzip-dev \
-    zip \
-    unzip \
-    git \
-    && docker-php-ext-install intl mysqli pdo pdo_mysql zip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    zip unzip git \
+    && docker-php-ext-install intl mysqli pdo pdo_mysql
 
-# Set document root to CI4 public folder
+# Enable apache rewrite
+RUN a2enmod rewrite
+
+# FIX MPM ERROR (INI KUNCI)
+RUN a2dismod mpm_event mpm_worker || true \
+    && a2enmod mpm_prefork
+
+# Set document root ke public
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
-
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
     /etc/apache2/sites-available/*.conf \
     /etc/apache2/apache2.conf
@@ -24,14 +22,12 @@ RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
 # Copy project
 COPY . /var/www/html
 
-# Set permissions
+# Permission writable
 RUN chown -R www-data:www-data /var/www/html/writable \
     && chmod -R 775 /var/www/html/writable
 
-# Install composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
+WORKDIR /var/www/html
 
 EXPOSE 80
+
+CMD ["apache2-foreground"]
