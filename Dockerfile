@@ -1,33 +1,32 @@
-FROM php:8.2-apache
+FROM php:8.2-fpm
 
-# Install dependency
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
     libicu-dev \
-    zip unzip git \
-    && docker-php-ext-install intl mysqli pdo pdo_mysql
+    zip \
+    unzip \
+    git \
+    curl
 
-# Enable apache rewrite
-RUN a2enmod rewrite
+# Install PHP extensions
+RUN docker-php-ext-install mysqli pdo pdo_mysql intl
 
-# FIX MPM ERROR (INI KUNCI)
-RUN a2dismod mpm_event mpm_worker || true \
-    && a2enmod mpm_prefork
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set document root ke public
-ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
-    /etc/apache2/sites-available/*.conf \
-    /etc/apache2/apache2.conf
+WORKDIR /app
 
-# Copy project
-COPY . /var/www/html
+# Copy project files
+COPY . .
 
-# Permission writable
-RUN chown -R www-data:www-data /var/www/html/writable \
-    && chmod -R 775 /var/www/html/writable
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader
 
-WORKDIR /var/www/html
+# Expose port
+EXPOSE 9000
 
-EXPOSE 80
-
-CMD ["apache2-foreground"]
+# Run PHP-FPM
+CMD ["php-fpm"]
