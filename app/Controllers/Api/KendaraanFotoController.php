@@ -6,7 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\KendaraanFotoModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
-class FotoKendaraanController extends BaseController
+class KendaraanFotoController extends BaseController
 {
     protected $fotoModel;
 
